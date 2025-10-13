@@ -1,0 +1,5 @@
+{
+  "name": "Chloe's Table Unionizer",
+  "description": "An intelligent application to assist in comparing and unioning data from multiple Excel and CSV files. It provides programmatic and AI-powered column matching, confidence scoring, and generates Snowflake SQL for the final union.",
+  "requestFramePermissions": []
+}
