@@ -4,6 +4,25 @@ import { AIProvider } from '../types';
 import { LoadingIcon, XCircleIcon, MagicIcon } from './Icons';
 import { toolDeclarations } from '../services/aiService';
 
+// Icons for expand/collapse
+const ChevronDownIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+  </svg>
+);
+
+const ChevronUpIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+  </svg>
+);
+
+const ArrowDownIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+  </svg>
+);
+
 interface ChatAssistantProps {
   aiSettings: AISettings;
   messages: ChatMessage[];
@@ -44,13 +63,57 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(() => {
+    // Load auto-scroll preference from localStorage
+    const saved = localStorage.getItem('chatAutoScroll');
+    return saved ? JSON.parse(saved) : false;
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const prevMessageCountRef = useRef(messages.length);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setShowScrollButton(false);
+    setHasNewMessages(false);
   };
 
-  useEffect(scrollToBottom, [messages, isLoading]);
+  // Check if user has scrolled up
+  const handleScroll = () => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollButton(!isNearBottom);
+
+      // If user scrolls to bottom manually, clear new messages indicator
+      if (isNearBottom) {
+        setHasNewMessages(false);
+      }
+    }
+  };
+
+  // Save auto-scroll preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('chatAutoScroll', JSON.stringify(autoScroll));
+  }, [autoScroll]);
+
+  // Handle new messages and auto-scroll
+  useEffect(() => {
+    if (messages.length > prevMessageCountRef.current) {
+      // New message(s) arrived
+      if (autoScroll) {
+        // Only auto-scroll if explicitly enabled
+        setTimeout(() => scrollToBottom(), 100);
+      } else {
+        // Show new messages indicator when auto-scroll is disabled
+        setHasNewMessages(true);
+      }
+    }
+    prevMessageCountRef.current = messages.length;
+  }, [messages, autoScroll]);
   
   const addMessage = (message: ChatMessage) => {
     setMessages(prev => [...prev, message]);
@@ -353,21 +416,41 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white border rounded-lg shadow">
-      <div className="p-3 border-b">
+    <div className="flex flex-col h-full bg-white border rounded-lg shadow-lg">
+      <div className="p-3 border-b bg-gradient-to-r from-blue-50 to-purple-50">
         <div className="flex justify-between items-center">
-            <div>
-                <h3 className="font-semibold text-lg text-gray-800">Chat with Chloe</h3>
-                <p className="text-sm text-gray-500">Your AI Data Assistant</p>
+            <div className="flex-grow min-w-0">
+                <h3 className="font-semibold text-lg text-gray-800 truncate">Chat with Chloe</h3>
+                {!isMinimized && <p className="text-sm text-gray-500">Your AI Data Assistant</p>}
             </div>
-            {selectedMatchIds.size > 0 && (
-                <button onClick={onClearSelection} className="flex items-center text-xs bg-gray-200 text-gray-700 font-semibold py-1 px-2 rounded-md hover:bg-gray-300">
-                    <XCircleIcon className="w-4 h-4 mr-1"/>
-                    Clear ({selectedMatchIds.size})
+            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                {!isMinimized && (
+                  <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-md border border-gray-200" title={autoScroll ? "Auto-scroll enabled" : "Auto-scroll disabled"}>
+                    <span className="text-xs text-gray-600 font-medium">Auto-scroll</span>
+                    <button
+                      onClick={() => setAutoScroll(!autoScroll)}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${autoScroll ? 'bg-blue-600' : 'bg-gray-300'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoScroll ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+                )}
+                {selectedMatchIds.size > 0 && !isMinimized && (
+                    <button onClick={onClearSelection} className="flex items-center text-xs bg-gray-200 text-gray-700 font-semibold py-1 px-2 rounded-md hover:bg-gray-300">
+                        <XCircleIcon className="w-4 h-4 mr-1"/>
+                        Clear ({selectedMatchIds.size})
+                    </button>
+                )}
+                <button
+                    onClick={() => setIsMinimized(!isMinimized)}
+                    className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                    title={isMinimized ? "Expand chat" : "Minimize chat"}
+                >
+                    {isMinimized ? <ChevronUpIcon className="w-5 h-5 text-gray-600" /> : <ChevronDownIcon className="w-5 h-5 text-gray-600" />}
                 </button>
-            )}
+            </div>
         </div>
-        {lastToolUsed && (
+        {lastToolUsed && !isMinimized && (
             <div className="mt-3 p-2 bg-indigo-50 border border-indigo-200 rounded-md text-center">
                 <p className="text-xs text-indigo-800 font-semibold flex items-center justify-center">
                     <MagicIcon className="w-4 h-4 mr-2 text-indigo-600"/>
@@ -375,63 +458,97 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
                 </p>
             </div>
         )}
-         <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-            <div className="p-2 bg-blue-50 rounded-md">
-                <div className="font-bold text-blue-700 text-lg">{pendingMatchesCount}</div>
-                <div className="text-blue-600 font-semibold">PENDING</div>
+         {!isMinimized && (
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="p-2 bg-blue-50 rounded-md">
+                    <div className="font-bold text-blue-700 text-lg">{pendingMatchesCount}</div>
+                    <div className="text-blue-600 font-semibold">PENDING</div>
+                </div>
+                <div className="p-2 bg-green-50 rounded-md">
+                    <div className="font-bold text-green-700 text-lg">{confirmedMatchesCount}</div>
+                    <div className="text-green-600 font-semibold">CONFIRMED</div>
+                </div>
+                <div className="p-2 bg-gray-100 rounded-md">
+                    <div className="font-bold text-gray-700 text-lg">{unmatchedColumnsCount}</div>
+                    <div className="text-gray-600 font-semibold">UNMATCHED</div>
+                </div>
             </div>
-            <div className="p-2 bg-green-50 rounded-md">
-                <div className="font-bold text-green-700 text-lg">{confirmedMatchesCount}</div>
-                <div className="text-green-600 font-semibold">CONFIRMED</div>
-            </div>
-            <div className="p-2 bg-gray-100 rounded-md">
-                <div className="font-bold text-gray-700 text-lg">{unmatchedColumnsCount}</div>
-                <div className="text-gray-600 font-semibold">UNMATCHED</div>
-            </div>
-        </div>
+        )}
       </div>
-      <div className="flex-grow p-4 overflow-y-auto bg-gray-50">
-        <div className="space-y-4">
-          {messages.map((msg, index) => (
-            <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-lg ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
-                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-              </div>
+
+      {!isMinimized && (
+        <>
+          <div
+            ref={messagesContainerRef}
+            onScroll={handleScroll}
+            className="flex-grow p-4 overflow-y-auto bg-gray-50 relative"
+          >
+            <div className="space-y-4">
+              {messages.map((msg, index) => (
+                <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] sm:max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-lg shadow-sm ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-white text-gray-800 border border-gray-200'}`}>
+                    <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                   <div className="flex items-center space-x-2 max-w-xs px-4 py-2 rounded-lg bg-white text-gray-800 border border-gray-200 shadow-sm">
+                    <LoadingIcon className="w-5 h-5" />
+                    <p className="text-sm italic">Working...</p>
+                   </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
             </div>
-          ))}
-          {isLoading && (
-            <div className="flex justify-start">
-               <div className="flex items-center space-x-2 max-w-xs px-4 py-2 rounded-lg bg-gray-200 text-gray-800">
-                <LoadingIcon className="w-5 h-5" />
-                <p className="text-sm italic">Working...</p>
-               </div>
+
+            {/* New messages indicator */}
+            {hasNewMessages && (
+              <button
+                onClick={scrollToBottom}
+                className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all z-10 flex items-center gap-2 animate-bounce"
+                title="Scroll to new messages"
+              >
+                <span className="text-sm font-semibold">New messages</span>
+                <ArrowDownIcon className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Scroll to bottom button */}
+            {showScrollButton && !hasNewMessages && (
+              <button
+                onClick={scrollToBottom}
+                className="absolute bottom-4 right-4 p-3 bg-gray-600 text-white rounded-full shadow-lg hover:bg-gray-700 transition-all z-10"
+                title="Scroll to latest message"
+              >
+                <ArrowDownIcon className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+          <div className="p-3 border-t bg-white">
+            <div className="flex flex-wrap gap-2 mb-2">
+                {suggestions.map(s => (
+                    <button key={s} onClick={(e) => handleSend(e, s)} disabled={isLoading} className="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full hover:bg-blue-200 disabled:opacity-50 transition-colors">
+                        {s}
+                    </button>
+                ))}
             </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-      <div className="p-3 border-t bg-white">
-        <div className="flex flex-wrap gap-2 mb-2">
-            {suggestions.map(s => (
-                <button key={s} onClick={(e) => handleSend(e, s)} disabled={isLoading} className="text-xs font-medium bg-blue-100 text-blue-800 px-3 py-1 rounded-full hover:bg-blue-200 disabled:opacity-50">
-                    {s}
-                </button>
-            ))}
-        </div>
-        <form onSubmit={handleSend} className="flex items-center">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message or select a suggestion..."
-            className="flex-grow px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={isLoading}
-          />
-          <button type="submit" disabled={isLoading || !input.trim()} className="ml-3 px-5 py-2 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 disabled:bg-gray-400">
-            Send
-          </button>
-        </form>
-      </div>
+            <form onSubmit={handleSend} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your message..."
+                className="flex-grow px-4 py-2 text-sm border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
+              />
+              <button type="submit" disabled={isLoading || !input.trim()} className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-full hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex-shrink-0">
+                Send
+              </button>
+            </form>
+          </div>
+        </>
+      )}
     </div>
   );
 };

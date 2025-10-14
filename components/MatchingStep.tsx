@@ -172,25 +172,25 @@ const ManualMatchPanel: React.FC<ManualMatchPanelProps> = ({
     };
     
     return (
-        <div className="bg-white p-6 rounded-lg shadow-md border flex flex-col h-[40rem]">
-            <h3 className="text-xl font-semibold mb-4">Manual Matching</h3>
-            <div className="mb-4">
+        <div className="bg-white p-4 md:p-6 rounded-lg shadow-md border flex flex-col" style={{height: 'clamp(20rem, 40rem, 50vh)'}}>
+            <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4">Manual Matching</h3>
+            <div className="mb-3 md:mb-4">
                 <input
                     type="text"
                     placeholder="Search by name or content..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 text-xs md:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
             </div>
-            <div className="flex-grow overflow-y-auto space-y-3 pr-2">
+            <div className="flex-grow overflow-y-auto space-y-2 md:space-y-3 pr-1 md:pr-2">
                 {Array.from(filteredUnmatched.entries()).map(([fileName, columns]) => {
                      const file = fileMap.get(fileName);
                      if (!file) return null;
                      return (
                     <div key={fileName}>
-                        <h4 className="font-semibold text-gray-700">{fileName}</h4>
-                        <ul className="mt-1 space-y-1">
+                        <h4 className="font-semibold text-sm md:text-base text-gray-700 mb-1">{fileName}</h4>
+                        <ul className="space-y-1">
                             {columns.map(colName => {
                                 const colData = allColumns.find(c => c.fileName === fileName && c.originalName === colName);
                                 const key = `${fileName}::${colName}`;
@@ -199,20 +199,20 @@ const ManualMatchPanel: React.FC<ManualMatchPanelProps> = ({
                                     <li key={key}
                                         onClick={() => onToggleSelect(key)}
                                         style={{ borderLeft: `4px solid ${file.color}` }}
-                                        className={`flex justify-between items-center p-2 rounded-md cursor-pointer transition-colors ${isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'}`}
+                                        className={`flex justify-between items-center p-1.5 md:p-2 rounded-md cursor-pointer transition-colors ${isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'}`}
                                     >
-                                        <div className="flex items-center truncate min-w-0">
-                                            <input type="checkbox" checked={isSelected} readOnly className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-3" />
-                                            <span className="font-bold text-gray-500 text-xs mr-2">[{file.sourceId}]</span>
-                                            <span className="text-sm text-gray-800 truncate" title={colName}>{colName}</span>
+                                        <div className="flex items-center truncate min-w-0 flex-grow">
+                                            <input type="checkbox" checked={isSelected} readOnly className="h-3.5 w-3.5 md:h-4 md:w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2 md:mr-3 flex-shrink-0" />
+                                            <span className="font-bold text-gray-500 text-xs mr-1 md:mr-2 flex-shrink-0">[{file.sourceId}]</span>
+                                            <span className="text-xs md:text-sm text-gray-800 truncate" title={colName}>{colName}</span>
                                         </div>
                                         {colData && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onPreview([colData]); }}
-                                                className="ml-2 text-gray-400 hover:text-blue-500 flex-shrink-0"
+                                                className="ml-2 text-gray-400 hover:text-blue-500 flex-shrink-0 p-0.5"
                                                 title={`Preview data for ${colName}`}
                                             >
-                                                <EyeIcon className="w-4 h-4" />
+                                                <EyeIcon className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                             </button>
                                         )}
                                     </li>
@@ -221,24 +221,24 @@ const ManualMatchPanel: React.FC<ManualMatchPanelProps> = ({
                         </ul>
                     </div>
                 )})}
-                {filteredUnmatched.size === 0 && <p className="text-sm text-gray-500 text-center py-4">No matching columns found.</p>}
+                {filteredUnmatched.size === 0 && <p className="text-xs md:text-sm text-gray-500 text-center py-4">No matching columns found.</p>}
             </div>
-             <div className="mt-4 pt-4 border-t flex items-center gap-3">
-                 <button 
+             <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t flex items-center gap-2 md:gap-3">
+                 <button
                     onClick={handleCreateClick}
                     disabled={selectedUnmatched.size < 2}
-                    className="w-full flex items-center justify-center py-2 px-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    className="w-full flex items-center justify-center py-2 px-3 md:px-4 text-xs md:text-sm bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
-                    <LinkIcon className="w-5 h-5 mr-2" />
+                    <LinkIcon className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" />
                     Create Match ({selectedUnmatched.size})
                 </button>
                  <button
                      onClick={onClearSelection}
                      disabled={selectedUnmatched.size === 0}
-                     className="text-gray-600 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+                     className="text-gray-600 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed flex-shrink-0"
                      title="Clear selection"
                  >
-                     <XCircleIcon className="w-7 h-7" />
+                     <XCircleIcon className="w-6 h-6 md:w-7 md:h-7" />
                  </button>
             </div>
         </div>
@@ -354,6 +354,11 @@ export const MatchingStep: React.FC<MatchingStepProps> = ({ initialMatches, unma
     - To perform a direct content comparison between two columns when you are unsure, you MUST call \`search_column_content\` with the source and target file/column names.
 3.  **Investigate When Unsure**: If you are uncertain whether two columns are a good match (e.g., their names are ambiguous like "Amount" or "Points"), you MUST use the \`search_column_content\` tool on the two columns. Compare their content similarity score and summary before making a final decision. This is crucial for accuracy. Do not guess.
 4.  **User Context is Key**: The user sees the matches and unmatched columns on their screen. Do not repeat this information. Use the context below only to inform your tool calls. After a tool returns, you can give a very brief confirmation (e.g., "Done. I've reviewed 5 matches and added my recommendations to the cards.").
+5.  **User Has Powerful Preview Tools**: Users can click the eye icon on match cards to open an interactive data preview modal. In this modal, they can:
+    - Click any cell value to search for that exact value across all columns in the match (shows match counts for each column)
+    - Use search boxes at the top of each column to filter rows
+    - See highlighted cells that match their search criteria
+    This means users can independently verify match quality by checking if columns contain similar data. When users mention seeing data in the preview or ask about specific values, acknowledge that they're using these powerful verification tools.
 
 CURRENT STATE FOR YOUR CONTEXT:
 - Files being processed:
@@ -900,60 +905,60 @@ Your only job is to translate user requests into tool calls. Be direct and effic
   };
 
   const renderMatchCard = (match: Match) => (
-    <div key={match.id} onClick={() => toggleMatchSelection(match.id)} className={`bg-white rounded-lg shadow-md border overflow-hidden cursor-pointer transition-all duration-200 flex flex-col ${selectedMatchIds.has(match.id) ? 'border-purple-500 ring-2 ring-purple-500' : 'border-gray-200'}`}>
-      <div className={`p-4 border-b-4 ${match.status === MatchStatus.CONFIRMED ? 'border-green-500' : match.status === MatchStatus.DENIED ? 'border-red-500' : 'border-blue-500'}`}>
+    <div key={match.id} onClick={() => toggleMatchSelection(match.id)} className={`bg-white rounded-lg shadow-md border overflow-hidden cursor-pointer transition-all duration-200 flex flex-col hover:shadow-lg ${selectedMatchIds.has(match.id) ? 'border-purple-500 ring-2 ring-purple-500' : 'border-gray-200 hover:border-gray-300'}`}>
+      <div className={`p-3 md:p-4 border-b-4 ${match.status === MatchStatus.CONFIRMED ? 'border-green-500' : match.status === MatchStatus.DENIED ? 'border-red-500' : 'border-blue-500'}`}>
         {editingMatchId === match.id ? (
-          <div className="flex items-center">
-            <input type="text" value={editingName} onChange={(e) => setEditingName(e.target.value)} onClick={e => e.stopPropagation()} className="font-bold text-lg text-gray-800 border-b-2 border-blue-500 focus:outline-none flex-grow"/>
-            <button onClick={(e) => {e.stopPropagation(); saveEditing(match.id)}} className="ml-2 text-green-600 hover:text-green-800"><CheckCircleIcon className="w-6 h-6"/></button>
-            <button onClick={(e) => {e.stopPropagation(); cancelEditing()}} className="ml-1 text-red-600 hover:red-800"><XCircleIcon className="w-6 h-6"/></button>
+          <div className="flex items-center gap-2">
+            <input type="text" value={editingName} onChange={(e) => setEditingName(e.target.value)} onClick={e => e.stopPropagation()} className="font-bold text-base md:text-lg text-gray-800 border-b-2 border-blue-500 focus:outline-none flex-grow min-w-0"/>
+            <button onClick={(e) => {e.stopPropagation(); saveEditing(match.id)}} className="text-green-600 hover:text-green-800 flex-shrink-0"><CheckCircleIcon className="w-5 h-5 md:w-6 md:h-6"/></button>
+            <button onClick={(e) => {e.stopPropagation(); cancelEditing()}} className="text-red-600 hover:text-red-800 flex-shrink-0"><XCircleIcon className="w-5 h-5 md:w-6 md:h-6"/></button>
           </div>
         ) : (
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-lg text-gray-800 truncate" title={match.finalName}>{match.finalName}</h3>
-            <div className="flex items-center space-x-2">
-                <button onClick={(e) => {e.stopPropagation(); handleCrumbleMatch(match.id)}} className="text-gray-500 hover:text-red-600" title="Crumble this match">
-                    <TrashIcon className="w-5 h-5"/>
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-bold text-base md:text-lg text-gray-800 truncate flex-grow min-w-0" title={match.finalName}>{match.finalName}</h3>
+            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                <button onClick={(e) => {e.stopPropagation(); handleCrumbleMatch(match.id)}} className="text-gray-500 hover:text-red-600 p-1" title="Crumble this match">
+                    <TrashIcon className="w-4 h-4 md:w-5 md:h-5"/>
                 </button>
-                <button onClick={(e) => handlePreviewAllInMatch(e, match)} className="text-gray-500 hover:text-blue-600" title="Compare data for all columns in this match">
-                    <EyeIcon className="w-5 h-5"/>
+                <button onClick={(e) => handlePreviewAllInMatch(e, match)} className="text-gray-500 hover:text-blue-600 p-1" title="Compare data for all columns in this match">
+                    <EyeIcon className="w-4 h-4 md:w-5 md:h-5"/>
                 </button>
-                <button onClick={(e) => {e.stopPropagation(); startEditing(match)}} className="text-gray-500 hover:text-blue-600" title="Edit final column name">
-                    <EditIcon className="w-5 h-5"/>
+                <button onClick={(e) => {e.stopPropagation(); startEditing(match)}} className="text-gray-500 hover:text-blue-600 p-1" title="Edit final column name">
+                    <EditIcon className="w-4 h-4 md:w-5 md:h-5"/>
                 </button>
             </div>
           </div>
         )}
-        <div className="text-xs text-gray-500 mt-1">
+        <div className="text-xs text-gray-500 mt-1.5">
           Source: <span className="font-semibold">{match.source}</span>
           {match.programmaticConfidence && ` | Confidence: ${Math.round(match.programmaticConfidence * 100)}%`}
         </div>
       </div>
-      <div className="p-4 bg-gray-50 flex-grow">
-        <ul className="space-y-2">
+      <div className="p-3 md:p-4 bg-gray-50 flex-grow">
+        <ul className="space-y-1.5 md:space-y-2">
           {Array.isArray(match.columns) &&
             match.columns.map(col => {
                 const file = fileMap.get(col.fileId);
                 if (!file) return null;
                 return (
-                    <li key={col.fileId + col.columnName} 
-                        className="flex items-center text-sm p-1 rounded-md"
+                    <li key={col.fileId + col.columnName}
+                        className="flex items-center text-xs md:text-sm p-1 md:p-1.5 rounded-md hover:bg-gray-100"
                         style={{ borderLeft: `4px solid ${file.color}` }}
                     >
                       <div className="flex-grow flex items-center min-w-0 ml-2">
-                        <div className="flex items-center space-x-1 flex-shrink-0 mr-2">
-                            <button onClick={(e) => handlePreviewSingleColumn(e, col)} className="text-gray-400 hover:text-blue-500" title={`Preview data for ${col.columnName}`}>
-                                <EyeIcon className="w-4 h-4"/>
+                        <div className="flex items-center gap-1 flex-shrink-0 mr-2">
+                            <button onClick={(e) => handlePreviewSingleColumn(e, col)} className="text-gray-400 hover:text-blue-500 p-0.5" title={`Preview data for ${col.columnName}`}>
+                                <EyeIcon className="w-3.5 h-3.5 md:w-4 md:h-4"/>
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); handleDropColumn(match.id, col); }} className="text-gray-400 hover:text-red-500" title={`Drop ${col.columnName} from match`}>
-                                <XCircleIcon className="w-4 h-4"/>
+                            <button onClick={(e) => { e.stopPropagation(); handleDropColumn(match.id, col); }} className="text-gray-400 hover:text-red-500 p-0.5" title={`Drop ${col.columnName} from match`}>
+                                <XCircleIcon className="w-3.5 h-3.5 md:w-4 md:h-4"/>
                             </button>
                         </div>
-                        <div className="flex items-baseline min-w-0" title={`${col.fileName}: ${col.columnName}`}>
-                           <span className="font-bold mr-2 text-gray-500 text-xs">[{file.sourceId}]</span>
+                        <div className="flex flex-wrap items-baseline min-w-0 gap-x-1" title={`${col.fileName}: ${col.columnName}`}>
+                           <span className="font-bold text-gray-500 text-xs flex-shrink-0">[{file.sourceId}]</span>
                            <span className="font-medium text-gray-600 truncate">{col.fileName}</span>
-                           <span className="text-gray-500 mx-1">:</span>
-                           <span className="ml-1 font-normal text-gray-800">{col.columnName}</span>
+                           <span className="text-gray-500 flex-shrink-0">:</span>
+                           <span className="font-normal text-gray-800 truncate">{col.columnName}</span>
                         </div>
                       </div>
                     </li>
@@ -963,32 +968,32 @@ Your only job is to translate user requests into tool calls. Be direct and effic
       </div>
 
       {match.aiReview && match.status === MatchStatus.PENDING && (
-        <div className="p-4 bg-purple-50 border-t border-b border-purple-200">
-            <div className="flex items-start">
-                <LightbulbIcon className="w-6 h-6 text-purple-600 mr-3 flex-shrink-0" />
-                <div>
-                    <h4 className="font-semibold text-purple-800">Chloe's Recommendation: <span className="font-bold">{match.aiReview.action}</span></h4>
-                    <p className="text-xs text-purple-700 mt-1 italic">"{match.aiReview.justification}"</p>
+        <div className="p-3 md:p-4 bg-purple-50 border-t border-b border-purple-200">
+            <div className="flex items-start gap-2 md:gap-3">
+                <LightbulbIcon className="w-5 h-5 md:w-6 md:h-6 text-purple-600 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                    <h4 className="font-semibold text-sm md:text-base text-purple-800">Chloe's Recommendation: <span className="font-bold">{match.aiReview.action}</span></h4>
+                    <p className="text-xs text-purple-700 mt-1 italic break-words">"{match.aiReview.justification}"</p>
                 </div>
             </div>
              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button onClick={(e) => {e.stopPropagation(); handleDismissSuggestion(match.id)}} className="flex items-center justify-center py-1 px-3 bg-gray-200 text-gray-700 text-sm font-semibold rounded-md hover:bg-gray-300 transition-colors">
-                    <XCircleIcon className="w-4 h-4 mr-1.5" /> Dismiss
+                <button onClick={(e) => {e.stopPropagation(); handleDismissSuggestion(match.id)}} className="flex items-center justify-center py-1.5 md:py-2 px-2 md:px-3 bg-gray-200 text-gray-700 text-xs md:text-sm font-semibold rounded-md hover:bg-gray-300 transition-colors">
+                    <XCircleIcon className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-1.5" /> Dismiss
                 </button>
-                <button onClick={(e) => {e.stopPropagation(); handleApplySuggestion(match.id)}} className="flex items-center justify-center py-1 px-3 bg-purple-600 text-white text-sm font-semibold rounded-md hover:bg-purple-700 transition-colors">
-                    <CheckCircleIcon className="w-4 h-4 mr-1.5" /> Apply
+                <button onClick={(e) => {e.stopPropagation(); handleApplySuggestion(match.id)}} className="flex items-center justify-center py-1.5 md:py-2 px-2 md:px-3 bg-purple-600 text-white text-xs md:text-sm font-semibold rounded-md hover:bg-purple-700 transition-colors">
+                    <CheckCircleIcon className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1 md:mr-1.5" /> Apply
                 </button>
             </div>
         </div>
       )}
 
       {match.status === MatchStatus.PENDING && !match.aiReview && (
-        <div className="p-2 bg-gray-100 grid grid-cols-2 gap-2">
-          <button onClick={(e) => {e.stopPropagation(); handleStatusChange(match.id, MatchStatus.DENIED)}} className="flex items-center justify-center py-2 px-4 bg-red-100 text-red-700 font-semibold rounded-md hover:bg-red-200 transition-colors">
-            <XCircleIcon className="w-5 h-5 mr-2" /> Deny
+        <div className="p-2 md:p-3 bg-gray-100 grid grid-cols-2 gap-2">
+          <button onClick={(e) => {e.stopPropagation(); handleStatusChange(match.id, MatchStatus.DENIED)}} className="flex items-center justify-center py-1.5 md:py-2 px-2 md:px-4 bg-red-100 text-red-700 text-xs md:text-sm font-semibold rounded-md hover:bg-red-200 transition-colors">
+            <XCircleIcon className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" /> Deny
           </button>
-          <button onClick={(e) => {e.stopPropagation(); handleStatusChange(match.id, MatchStatus.CONFIRMED)}} className="flex items-center justify-center py-2 px-4 bg-green-100 text-green-700 font-semibold rounded-md hover:bg-green-200 transition-colors">
-            <CheckCircleIcon className="w-5 h-5 mr-2" /> Confirm
+          <button onClick={(e) => {e.stopPropagation(); handleStatusChange(match.id, MatchStatus.CONFIRMED)}} className="flex items-center justify-center py-1.5 md:py-2 px-2 md:px-4 bg-green-100 text-green-700 text-xs md:text-sm font-semibold rounded-md hover:bg-green-200 transition-colors">
+            <CheckCircleIcon className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" /> Confirm
           </button>
         </div>
       )}
@@ -1005,74 +1010,90 @@ Your only job is to translate user requests into tool calls. Be direct and effic
   return (
     <>
     <UserGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
-    <DataPreviewModal 
+    <DataPreviewModal
         isOpen={isPreviewModalOpen}
         onClose={() => setIsPreviewModalOpen(false)}
         columns={columnsToPreview}
     />
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-      <div className="xl:col-span-2 space-y-8">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 lg:gap-8">
+      {/* Main Content Area */}
+      <div className="lg:col-span-8 space-y-6 md:space-y-8">
         <div>
-            <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold text-gray-800">Review Column Matches</h2>
-                <button 
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-800">Review Column Matches</h2>
+                <button
                     onClick={() => setIsGuideOpen(true)}
-                    className="flex items-center space-x-2 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                    className="flex items-center justify-center sm:justify-start space-x-2 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors"
                     title="Show User Guide"
                 >
-                    <QuestionMarkCircleIcon className="w-6 h-6"/>
+                    <QuestionMarkCircleIcon className="w-5 h-5 md:w-6 md:h-6"/>
                     <span>How does this work?</span>
                 </button>
             </div>
-            <p className="text-gray-600 mt-2">Confirm or deny the suggested matches. Click a card to select it for chat, or use the <EyeIcon className="w-4 h-4 inline -mt-1"/> icons to preview data.</p>
+            <p className="text-sm md:text-base text-gray-600 mt-2">Confirm or deny the suggested matches. Click a card to select it for chat, or use the <EyeIcon className="w-4 h-4 inline -mt-1"/> icons to preview data.</p>
         </div>
+
+        {/* Pending Matches Section */}
         <section>
-          <h3 className="text-xl font-semibold mb-4 text-gray-700">Pending Review ({pendingMatches.length})</h3>
+          <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-gray-700">Pending Review ({pendingMatches.length})</h3>
           {pendingMatches.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
               {pendingMatches.map(renderMatchCard)}
             </div>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <CheckCircleIcon className="w-16 h-16 text-green-500 mx-auto" />
-              <p className="mt-4 font-semibold text-xl text-gray-700">All matches reviewed!</p>
+            <div className="text-center py-8 md:py-12 bg-gray-50 rounded-lg">
+              <CheckCircleIcon className="w-12 h-12 md:w-16 md:h-16 text-green-500 mx-auto" />
+              <p className="mt-3 md:mt-4 font-semibold text-lg md:text-xl text-gray-700">All matches reviewed!</p>
             </div>
           )}
         </section>
+
+        {/* Confirmed Matches Section */}
         {confirmedMatches.length > 0 && (
           <section>
-            <h3 className="text-xl font-semibold mb-4 text-gray-700">Confirmed Matches ({confirmedMatches.length})</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-gray-700">Confirmed Matches ({confirmedMatches.length})</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
               {confirmedMatches.map(renderMatchCard)}
             </div>
           </section>
         )}
       </div>
-      <aside className="space-y-6">
-        <div className="bg-white p-6 rounded-lg shadow-md border">
-            <button 
-                onClick={() => onProceed(matches)} 
+
+      {/* Sidebar */}
+      <aside className="lg:col-span-4 space-y-4 md:space-y-6">
+        {/* Proceed Button */}
+        <div className="bg-white p-4 md:p-6 rounded-lg shadow-md border sticky top-4 z-20">
+            <button
+                onClick={() => onProceed(matches)}
                 disabled={pendingMatches.length > 0}
-                className="w-full py-3 px-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="w-full py-2.5 md:py-3 px-4 bg-green-600 text-white text-sm md:text-base font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
                 Proceed to Results ({confirmedMatches.length} confirmed)
             </button>
         </div>
-        <SourceFilesControl 
+
+        {/* Source Files Control */}
+        <SourceFilesControl
             files={files}
             onColorChange={handleColorChange}
         />
-        <ExportControl 
+
+        {/* Export Control */}
+        <ExportControl
             matches={matches}
             unmatchedColumns={unmatchedColumns}
             files={files}
         />
+
+        {/* AI Settings */}
         <AISettingsControl
             aiSettings={aiSettings}
             setAiSettings={setAiSettings}
         />
+
+        {/* Manual Matching Panel */}
         {allUnmatchedCount > 0 && (
-            <ManualMatchPanel 
+            <ManualMatchPanel
                 unmatchedColumns={unmatchedColumns}
                 files={files}
                 onPreview={handlePreviewData}
@@ -1082,7 +1103,9 @@ Your only job is to translate user requests into tool calls. Be direct and effic
                 onClearSelection={handleClearUnmatchedSelection}
             />
         )}
-        <div className="h-[40rem] sticky top-8">
+
+        {/* Chat Assistant */}
+        <div className="sticky top-4" style={{height: 'clamp(300px, 40rem, calc(100vh - 2rem))'}}>
              <ChatAssistant
                 aiSettings={aiSettings}
                 messages={messages}

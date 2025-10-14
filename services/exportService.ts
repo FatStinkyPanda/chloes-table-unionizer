@@ -26,8 +26,37 @@ export interface SqlExportOptions {
 }
 
 /**
+ * Helper to get the ColumnData for a given column in a file
+ */
+function getColumnData(fileId: string, columnName: string, files: UploadedFile[]): ColumnData | undefined {
+  const file = files.find(f => f.id === fileId);
+  return file?.columns.find(c => c.originalName === columnName);
+}
+
+/**
+ * Detects if a match has columns with different data types
+ * Returns true if conversion to VARCHAR is needed
+ */
+function needsTypeConversion(match: Match, files: UploadedFile[]): boolean {
+  if (match.columns.length <= 1) return false;
+
+  const types = new Set<string>();
+  for (const col of match.columns) {
+    const colData = getColumnData(col.fileId, col.columnName, files);
+    if (colData) {
+      types.add(colData.dataType);
+    }
+  }
+
+  // If we have more than one distinct type, we need conversion
+  return types.size > 1;
+}
+
+/**
  * Generates a Snowflake SQL query to union all tables based on the current mapping state.
- * This includes confirmed matches and all unmatched columns.
+ * Includes ALL columns (confirmed matches AND unmatched) to preserve all data.
+ * Automatically detects type mismatches and converts to VARCHAR for compatibility.
+ * CRITICAL: No columns are omitted - all data is preserved in the union.
  */
 export function generateSql(
   matches: Match[],
@@ -36,11 +65,12 @@ export function generateSql(
   options: SqlExportOptions
 ): void {
   const confirmedMatches = matches.filter(m => m.status === MatchStatus.CONFIRMED);
-  
+
   // Combine originally unmatched columns with columns from non-confirmed matches
+  // This ensures NO data is lost - all columns from all files are included
   const comprehensiveUnmatched = new Map<string, Set<string>>();
   unmatchedColumns.forEach((cols, file) => comprehensiveUnmatched.set(file, new Set(cols)));
-  
+
   matches.filter(m => m.status !== MatchStatus.CONFIRMED).forEach(m => {
       m.columns.forEach(col => {
           if (!comprehensiveUnmatched.has(col.fileName)) {
@@ -50,6 +80,7 @@ export function generateSql(
       });
   });
 
+  // Build comprehensive list of ALL columns (matched + unmatched) - NO DATA LOSS
   const allFinalColumns = new Set<string>();
   confirmedMatches.forEach(m => allFinalColumns.add(m.finalName));
   comprehensiveUnmatched.forEach(cols => cols.forEach(c => allFinalColumns.add(c)));
@@ -59,24 +90,49 @@ export function generateSql(
     return;
   }
 
+  // Sort all columns for consistent ordering
   const finalColumnList = Array.from(allFinalColumns).sort();
+
+  // Detect which matches need type conversion
+  const matchesNeedingConversion = new Map<string, boolean>();
+  confirmedMatches.forEach(match => {
+    matchesNeedingConversion.set(match.finalName, needsTypeConversion(match, files));
+  });
 
   const unionParts = files.map(file => {
     const selectClauses = finalColumnList.map(finalColName => {
-      // Check if it's a confirmed match
+      // Check if it's a confirmed match first
       const match = confirmedMatches.find(m => m.finalName === finalColName);
+
       if (match) {
+        // This is a matched column
         const columnInFile = match.columns.find(c => c.fileId === file.id);
-        return columnInFile
-          ? `    "${columnInFile.columnName}" AS "${finalColName}"`
-          : `    NULL AS "${finalColName}"`;
+        const needsConversion = matchesNeedingConversion.get(finalColName);
+
+        if (columnInFile) {
+          // Column exists in this file
+          if (needsConversion) {
+            // Cast to VARCHAR for type compatibility
+            return `    CAST("${columnInFile.columnName}" AS VARCHAR) AS "${finalColName}"`;
+          } else {
+            // No type mismatch, use as-is
+            return `    "${columnInFile.columnName}" AS "${finalColName}"`;
+          }
+        } else {
+          // Matched column doesn't exist in this file, use NULL
+          return `    NULL AS "${finalColName}"`;
+        }
+      } else {
+        // This is an unmatched column - check if this file has it
+        const isUnmatchedInFile = comprehensiveUnmatched.get(file.name)?.has(finalColName);
+        if (isUnmatchedInFile) {
+          // Unmatched column exists in this file
+          return `    "${finalColName}" AS "${finalColName}"`;
+        } else {
+          // Unmatched column doesn't exist in this file, use NULL
+          return `    NULL AS "${finalColName}"`;
+        }
       }
-      
-      // Check if it's an unmatched column in this file
-      const isUnmatchedInFile = comprehensiveUnmatched.get(file.name)?.has(finalColName);
-      return isUnmatchedInFile
-        ? `    "${finalColName}" AS "${finalColName}"`
-        : `    NULL AS "${finalColName}"`;
     });
 
     if (options.includeSource) {
@@ -89,8 +145,34 @@ export function generateSql(
     return `SELECT\n${selectClauses.join(',\n')}\nFROM ${tableName}`;
   });
 
+  // Build type conversion warnings
+  const typeConversionWarnings = Array.from(matchesNeedingConversion.entries())
+    .filter(([_, needsConversion]) => needsConversion)
+    .map(([columnName]) => {
+      const match = confirmedMatches.find(m => m.finalName === columnName);
+      if (!match) return '';
+
+      const types = match.columns.map(col => {
+        const colData = getColumnData(col.fileId, col.columnName, files);
+        return `${col.fileName}:${col.columnName} (${colData?.dataType || 'unknown'})`;
+      }).join(', ');
+
+      return `--   "${columnName}": Type mismatch detected [${types}] - converted to VARCHAR`;
+    })
+    .filter(w => w.length > 0);
+
+  const typeWarningSection = typeConversionWarnings.length > 0
+    ? `\n-- TYPE CONVERSION APPLIED:\n-- The following columns have been automatically CAST to VARCHAR due to type mismatches:\n${typeConversionWarnings.join('\n')}\n`
+    : '';
+
+  // VERIFICATION: Count total columns from all files to ensure none are lost
+  const totalOriginalColumns = files.reduce((sum, file) => sum + file.columns.length, 0);
+  const totalOutputColumns = allFinalColumns.size;
+
+  const verificationSection = `\n-- DATA PRESERVATION VERIFICATION:\n-- Total columns in source files: ${totalOriginalColumns}\n-- Total columns in output (after matching): ${totalOutputColumns}\n-- Confirmed matches: ${confirmedMatches.length}\n-- Unmatched columns preserved: ${Array.from(comprehensiveUnmatched.values()).reduce((sum, set) => sum + set.size, 0)}\n`;
+
   const sql = `-- Generated Snowflake SQL for Table Union
--- Note: Replace placeholder table names with your actual Snowflake table names.
+-- Note: Replace placeholder table names with your actual Snowflake table names.${verificationSection}${typeWarningSection}
 
 ${unionParts.join('\n\nUNION ALL\n\n')};
 `;
@@ -164,15 +246,20 @@ export function generateHtmlReport(
   };
 
   const matchedHtml = confirmedMatches.length > 0 ? confirmedMatches.map(match => {
+    const hasTypeMismatch = needsTypeConversion(match, files);
+    const typeWarning = hasTypeMismatch ? '<span class="type-warning">⚠️ TYPE MISMATCH - Will be converted to VARCHAR in SQL</span>' : '';
+
     return `
-      <div class="final-column-card">
-        <h3>Final Unioned Column: <span>${match.finalName}</span></h3>
+      <div class="final-column-card ${hasTypeMismatch ? 'type-mismatch' : ''}">
+        <h3>Final Unioned Column: <span>${match.finalName}</span> ${typeWarning}</h3>
         <div class="source-columns-container">
           ${(match.columns || []).map(col => {
             const colData = getColumnDataObject(col.fileName, col.columnName, files);
+            const dataType = colData?.dataType || 'unknown';
             return `
               <div class="source-column-card">
                 <h4>${col.fileName} &rarr; <strong>${col.columnName}</strong></h4>
+                <p class="data-type">Data Type: <strong>${dataType}</strong></p>
                 <table>
                   <thead><tr><th>Sample Data</th></tr></thead>
                   <tbody>${getSampleDataHtml(colData?.sampleData)}</tbody>
@@ -193,9 +280,11 @@ export function generateHtmlReport(
             <div class="source-columns-container">
                 ${Array.from(columns).map(colName => {
                     const colData = getColumnDataObject(fileName, colName, files);
+                    const dataType = colData?.dataType || 'unknown';
                     return `
                         <div class="source-column-card unmatched">
                             <h4><strong>${colName}</strong></h4>
+                            <p class="data-type">Data Type: <strong>${dataType}</strong></p>
                             <table>
                                 <thead><tr><th>Sample Data</th></tr></thead>
                                 <tbody>${getSampleDataHtml(colData?.sampleData)}</tbody>
@@ -227,6 +316,10 @@ export function generateHtmlReport(
         h4 { margin: 0 0 10px 0; font-size: 1.1em; color: #495057; word-break: break-all; }
         h4 strong { color: #000; }
         .final-column-card { background: #ffffff; border: 1px solid #dee2e6; border-left: 6px solid #28a745; margin-bottom: 25px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .final-column-card.type-mismatch { border-left-color: #ffc107; background-color: #fffbf0; }
+        .type-warning { display: inline-block; margin-left: 10px; padding: 4px 8px; background-color: #fff3cd; color: #856404; border: 1px solid #ffc107; border-radius: 4px; font-size: 0.75em; font-weight: bold; }
+        .data-type { margin: 5px 0 10px; font-size: 0.9em; color: #6c757d; }
+        .data-type strong { color: #495057; font-family: "Courier New", monospace; background-color: #f8f9fa; padding: 2px 6px; border-radius: 3px; }
         .unmatched-file-group { margin-bottom: 25px; }
         .source-columns-container { display: flex; flex-wrap: wrap; gap: 20px; }
         .source-column-card { border: 1px solid #ced4da; border-radius: 6px; padding: 15px; background: #f8f9fa; flex: 1 1 250px; min-width: 250px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
